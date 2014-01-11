@@ -151,6 +151,8 @@ class WorkflowTicketFieldsModule(Component):
         action_name = action # @@TODO: config'able label/name
 
         for field in data.get('fields', []):
+            id = "action_%s_%s" % (action, field)
+
             operation = data.get('operations', {}).get(field, "change")
             assert operation in ["change", "unset"]
             if operation == "unset":
@@ -160,6 +162,7 @@ class WorkflowTicketFieldsModule(Component):
             current_value = ticket._old.get(field, ticket[field]) or ""
             control.append(tag.label(field,
                                      tag.input(
+                        name=id, id=id,
                         type='text', value=current_value)))
             
         current_status = ticket._old.get('status', ticket['status'])
