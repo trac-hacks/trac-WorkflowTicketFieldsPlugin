@@ -1,8 +1,9 @@
 from genshi.builder import tag
+from genshi.filters import Transformer
 from trac.core import *
 from trac.config import *
 from trac.ticket.api import ITicketActionController
-from trac.web.api import IRequestFilter
+from trac.web.api import IRequestFilter, ITemplateStreamFilter
 
 class WorkflowTicketFieldsModule(Component):
 
@@ -75,7 +76,7 @@ class WorkflowTicketFieldsModule(Component):
         'ticket-workflow-fields',
         """The workflow for tickets is controlled by plugins.""")
 
-    implements(IRequestFilter, ITicketActionController)
+    implements(IRequestFilter, ITicketActionController, ITemplateStreamFilter)
 
     def parse_config(self):
         return self.default_config
@@ -88,6 +89,34 @@ class WorkflowTicketFieldsModule(Component):
             fields.update(config[action].get("fields", []))
 
         return fields
+
+    ## ITemplateStreamFilter methods
+
+    def filter_stream(self, req, method, filename, stream, data):
+        if filename != 'ticket.html':
+            return stream
+        fields = data.get("fields")
+        if not fields:
+            return stream
+        if not data.get('ticket'):
+            return stream
+
+        readd_fields = []
+        for field in data['fields']:
+            if field['name'] in \
+                    self.get_ticket_action_fields(req, data['ticket']):
+                readd_fields.append(field)
+
+        filter = Transformer('//table[@class="properties"]')
+        for field in readd_fields:
+            stream |= filter.append(tag.tr(tag.th('%s:' % field.get("label", 
+                                                                    field['name']), 
+                                                  id='h_%s' % field['name']),
+                                           tag.td(data['ticket'][field['name']],
+                                                  headers='h_%s' % field['name'],
+                                                  class_='searchable')))
+        return stream
+        
 
     ## IRequestFilter methods
 
