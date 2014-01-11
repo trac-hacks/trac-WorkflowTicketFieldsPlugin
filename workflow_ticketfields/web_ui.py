@@ -176,7 +176,32 @@ class WorkflowTicketFieldsModule(Component):
                 '. '.join(hints) + '.' if hints else '')
 
     def get_ticket_changes(self, req, ticket, action):
-        pass
+        config = self.parse_config()
+        assert action in config
+
+        data = config[action]
+        
+        updated = {}
+
+        current_status = ticket._old.get('status', ticket['status'])
+        new_status = data['status'].get(current_status) or \
+            data['status']['*']
+        if new_status != '*':
+            updated['status'] = new_status
+
+        for field in data.get('fields', []):
+            id = "action_%s_%s" % (action, field)
+
+            operation = data.get('operations', {}).get(field, "change")
+            assert operation in ["change", "unset"]
+            if operation == "unset":
+                updated[field] = ''
+                continue
+            assert operation == "change"
+            updated[field] = req.args.get('action_%s_%s' % (action, field)) \
+                or '' # @@TODO: config'able default
+
+        return updated
 
     def apply_action_side_effects(self, req, ticket, action):
         pass
