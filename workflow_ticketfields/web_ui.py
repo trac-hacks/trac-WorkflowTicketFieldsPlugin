@@ -1,3 +1,4 @@
+from genshi.builder import tag
 from trac.core import *
 from trac.config import *
 from trac.ticket.api import ITicketActionController
@@ -22,12 +23,12 @@ class WorkflowTicketFieldsModule(Component):
                     "fields": ["resolution"],
                     },
         "reassign": { "status": {"new": "assigned",
-                               "assigned": "assigned",
-                               "accepted": "assigned",
-                               "reopened": "assigned",
-                               }, 
-                    "fields": ["owner"],
-                    },
+                                 "assigned": "assigned",
+                                 "accepted": "assigned",
+                                 "reopened": "assigned",
+                                 }, 
+                      "fields": ["owner"],
+                      },
         "reopen": { "status": {"closed": "reopened"},
                     "fields": ["resolution"],
                     "operations": {"resolution": "unset"},
@@ -96,6 +97,8 @@ class WorkflowTicketFieldsModule(Component):
     def post_process_request(self, req, template, data, content_type):
         if template != 'ticket.html':
             return (template, data, content_type)
+        if not data.get('ticket'):
+            return (template, data, content_type)
 
         fields = data.get("fields")
         if not fields:
@@ -137,7 +140,37 @@ class WorkflowTicketFieldsModule(Component):
         return all_status
 
     def render_ticket_action_control(self, req, ticket, action):
-        pass
+        config = self.parse_config()
+        assert action in config
+
+        control = []
+        hints = []
+
+        data = config[action]
+        
+        action_name = action # @@TODO: config'able label/name
+
+        for field in data.get('fields', []):
+            operation = data.get('operations', {}).get(field, "change")
+            assert operation in ["change", "unset"]
+            if operation == "unset":
+                hints.append("%s will be unset" % field) # @@TODO: i18n
+                continue
+            assert operation == "change"
+            current_value = ticket._old.get(field, ticket[field]) or ""
+            control.append(tag.label(field,
+                                     tag.input(
+                        type='text', value=current_value)))
+            
+        current_status = ticket._old.get('status', ticket['status'])
+        new_status = data['status'].get(current_status) or \
+            data['status']['*']
+
+        if new_status != '*':
+            hints.append("Next status will be %s" % new_status) # @@TODO: i18n
+
+        return (action_name, tag(*control), 
+                '. '.join(hints) + '.' if hints else '')
 
     def get_ticket_changes(self, req, ticket, action):
         pass
