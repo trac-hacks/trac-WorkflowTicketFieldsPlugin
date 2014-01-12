@@ -105,16 +105,29 @@ class WorkflowTicketFieldsModule(Component):
         for field in data['fields']:
             if field['name'] in \
                     self.get_ticket_action_fields(req, data['ticket']):
+                if field['name'] in ("reporter", "owner"): # these are hardcoded in trac's ticket_box.html template
+                    continue
                 readd_fields.append(field)
 
         filter = Transformer('//table[@class="properties"]')
-        for field in readd_fields:
-            stream |= filter.append(tag.tr(tag.th('%s:' % field.get("label", 
-                                                                    field['name']), 
-                                                  id='h_%s' % field['name']),
-                                           tag.td(data['ticket'][field['name']],
-                                                  headers='h_%s' % field['name'],
-                                                  class_='searchable')))
+        trs = []
+        contents = []
+        for i, field in enumerate(readd_fields):
+            field = [tag.th('%s:' % field.get("label", 
+                                              field['name']), 
+                            id='h_%s' % field['name']),
+                     tag.td(field['rendered'] \
+                                if 'rendered' in field \
+                                else data['ticket'][field['name']],
+                            headers='h_%s' % field['name'],
+                            class_='searchable')]
+            contents.append(field)
+            if i % 2 == 1:
+                trs.append(tag.tr(*contents))
+                contents = []
+        if len(contents):
+            trs.append(tag.tr(*contents))
+        stream |= filter.append(tag(*trs))
         return stream
         
 
