@@ -115,7 +115,8 @@ class WorkflowTicketFieldsModule(Component):
         for i, field in enumerate(readd_fields):
             field = [tag.th('%s:' % field.get("label", 
                                               field['name']), 
-                            id='h_%s' % field['name']),
+                            id='h_%s' % field['name'],
+                            class_="missing" if not data['ticket'][field['name']] else ""),
                      tag.td(field['rendered'] \
                                 if 'rendered' in field \
                                 else data['ticket'][field['name']],
