@@ -214,7 +214,10 @@ class WorkflowTicketFieldsModule(Component):
         if new_status != '*':
             hints.append("Next status will be %s" % new_status) # @@TODO: i18n
 
-        return (action_name, tag(*control), 
+        return (action_name, tag.div(*[tag.div(element, style=("display: inline-block; "
+                                                               "margin-right: 1em"))
+                                       for element in control],
+                                      style="margin-left: 2em"), 
                 '. '.join(hints) + '.' if hints else '')
 
     def get_ticket_changes(self, req, ticket, action):
