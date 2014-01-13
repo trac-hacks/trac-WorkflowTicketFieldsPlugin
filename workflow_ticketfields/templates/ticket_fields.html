@@ -1,0 +1,60 @@
+<div xmlns="http://www.w3.org/1999/xhtml"
+     xmlns:xi="http://www.w3.org/2001/XInclude"
+     xmlns:py="http://genshi.edgewall.org/"
+     xmlns:i18n="http://genshi.edgewall.org/i18n"
+     py:strip=""
+     py:with="value = ticket.get_value_or_default(field.name)">
+
+  <py:choose test="field.type" py:if="field">
+                        <select py:when="'select'" id="field-${field.name}" name="field_${field.name}">
+                          <option py:if="field.optional"></option>
+                          <option py:for="option in field.options"
+                                  selected="${value == option or None}"
+                                  value="$option" py:content="option"></option>
+                          <optgroup py:for="optgroup in field.optgroups"
+                                    py:if="optgroup.options"
+                                    label="${optgroup.label}">
+                            <option py:for="option in optgroup.options"
+                                    selected="${value == option or None}"
+                                    value="$option" py:content="option"></option>
+                          </optgroup>
+                        </select>
+                        <textarea py:when="'textarea'" id="field-${field.name}" name="field_${field.name}"
+                                  cols="${field.width}" rows="${field.height}"
+                                  class="${'wikitext ' if field.format == 'wiki' else None}trac-resizable">
+${value}</textarea>
+                        <span py:when="'checkbox'">
+                          <input type="checkbox" id="field-${field.name}" name="field_${field.name}"
+                                 checked="${value == '1' or None}" value="1" />
+                          <input type="hidden" name="field_checkbox_${field.name}" value="1" />
+                        </span>
+                        <label py:when="'radio'"
+                               py:for="idx, option in enumerate(field.options)">
+                          <input type="radio" name="field_${field.name}" value="${option}"
+                                 checked="${value == option or None}" />
+                          ${option}
+                        </label>
+                        <input py:when="'time'" type="text" id="field-${field.name}" title="${field.format_hint}"
+                               name="field_${field.name}" value="${field.edit}" class="trac-${field.format}picker" />
+                        <py:otherwise><!--! Text input fields -->
+                          <py:choose>
+                            <span py:when="field.cc_entry"><!--! Special case for Cc: field -->
+                              <em>${field.cc_entry}</em>
+                              <input type="checkbox" id="field-cc" name="cc_update"
+                                title="This checkbox allows you to add or remove yourself from the CC list."
+                                checked="${field.cc_update}" />
+                            </span>
+                            <!--! Cc: when TICKET_EDIT_CC is allowed -->
+                            <span py:when="field.name == 'cc'">
+                              <input  type="text" id="field-${field.name}"
+                                title="Space or comma delimited email addresses and usernames are accepted."
+                                name="field_${field.name}" value="${value}" />
+                            </span>
+                            <!--! All the other text input fields -->
+                            <input py:otherwise="" type="text" id="field-${field.name}"
+                              name="field_${field.name}" value="${value}" />
+                          </py:choose>
+                        </py:otherwise>
+                      </py:choose>
+
+</div>

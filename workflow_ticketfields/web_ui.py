@@ -1,9 +1,12 @@
 from genshi.builder import tag
+from genshi.core import Markup
 from genshi.filters import Transformer
 from trac.core import *
 from trac.config import *
 from trac.ticket.api import ITicketActionController
 from trac.web.api import IRequestFilter, ITemplateStreamFilter
+from trac.web.chrome import ITemplateProvider, Chrome
+import pkg_resources
 
 class WorkflowTicketFieldsModule(Component):
 
@@ -76,7 +79,14 @@ class WorkflowTicketFieldsModule(Component):
         'ticket-workflow-fields',
         """The workflow for tickets is controlled by plugins.""")
 
-    implements(IRequestFilter, ITicketActionController, ITemplateStreamFilter)
+    implements(IRequestFilter, ITicketActionController, 
+               ITemplateStreamFilter, ITemplateProvider)
+
+    def get_htdocs_dirs(self):
+        return []
+
+    def get_templates_dirs(self):
+        return [pkg_resources.resource_filename('workflow_ticketfields', 'templates')]
 
     def parse_config(self):
         return self.default_config
@@ -193,6 +203,11 @@ class WorkflowTicketFieldsModule(Component):
         
         action_name = action # @@TODO: config'able label/name
 
+        chrome = Chrome(self.env)
+
+        from trac.ticket.web_ui import TicketModule
+        prepared_fields = TicketModule(self.env)._prepare_fields(req, ticket)
+
         for field in data.get('fields', []):
             id = "action_%s_%s" % (action, field)
 
@@ -203,11 +218,25 @@ class WorkflowTicketFieldsModule(Component):
                 continue
             assert operation == "change"
             current_value = ticket._old.get(field, ticket[field]) or ""
+
+            rendered_control = ''
+            prepared_field = [pfield for pfield in prepared_fields 
+                              if pfield['name'] == field]
+            if len(prepared_field):
+                prepared_field = prepared_field[0]
+
+                # we can't use chrome.render_template here, or it will blow away
+                # key scripts like jquery.js and trac.js in the eventual 'primary' template
+                # that's rendered by process_request
+                template = chrome.load_template("ticket_fields.html", method="xhtml")
+                rendered_control = template.generate(ticket=ticket, field=prepared_field)
+                if rendered_control:
+                    rendered_control = Markup(rendered_control)
             control.append(tag.label(field,
-                                     tag.input(
+                                     rendered_control or tag.input(
                         name=id, id=id,
                         type='text', value=current_value)))
-            
+
         current_status = ticket._old.get('status', ticket['status'])
         new_status = data['status'].get(current_status) or \
             data['status']['*']
