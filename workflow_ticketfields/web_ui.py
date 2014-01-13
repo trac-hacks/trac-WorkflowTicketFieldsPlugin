@@ -5,7 +5,7 @@ from trac.core import *
 from trac.config import *
 from trac.ticket.api import ITicketActionController
 from trac.web.api import IRequestFilter, ITemplateStreamFilter
-from trac.web.chrome import ITemplateProvider, Chrome
+from trac.web.chrome import ITemplateProvider, Chrome, add_script
 import pkg_resources
 
 class WorkflowTicketFieldsModule(Component):
@@ -83,7 +83,8 @@ class WorkflowTicketFieldsModule(Component):
                ITemplateStreamFilter, ITemplateProvider)
 
     def get_htdocs_dirs(self):
-        return []
+        return [("workflow_ticketfields", 
+                 pkg_resources.resource_filename('workflow_ticketfields', 'htdocs'))]
 
     def get_templates_dirs(self):
         return [pkg_resources.resource_filename('workflow_ticketfields', 'templates')]
@@ -244,10 +245,12 @@ class WorkflowTicketFieldsModule(Component):
         if new_status != '*':
             hints.append("Next status will be %s" % new_status) # @@TODO: i18n
 
+        add_script(req, "workflow_ticketfields/workflow_ticketfields.js")
         return (action_name, tag.div(*[tag.div(element, style=("display: inline-block; "
                                                                "margin-right: 1em"))
                                        for element in control],
-                                      style="margin-left: 2em"), 
+                                      class_="workflow_ticket_fields",
+                                      style="margin-left: 2em; display: none"), 
                 '. '.join(hints) + '.' if hints else '')
 
     def get_ticket_changes(self, req, ticket, action):
